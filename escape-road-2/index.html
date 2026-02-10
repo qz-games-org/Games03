@@ -219,11 +219,13 @@ const freezeDOM = (() => {
 				progress_text.innerText = "Game Loading ...";
 			}
 		}).then((unityInstance) => {
+			freezeDOM();
 			window.unityInstance = unityInstance;
+
 			setTimeout(function() {
 				loadingBar.style.display = "none";
 				window.focus();
-				freezeDOM();
+				
 			}, 2000);
 			container.style.display = "block";
 		}).catch((message) => {
