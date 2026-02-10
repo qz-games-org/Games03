@@ -26,8 +26,8 @@
 	 
 	<script>
 		var buildUrl = "Build";
-		var versionFolder = "25102308/";
-		buildUrl = "/"+versionFolder + buildUrl;
+		var versionFolder = "/25102308/";
+		buildUrl = "./"+versionFolder + buildUrl;
 		var loaderUrl = buildUrl + "/escape-road-2-v25102308.loader.js";
 		var config = {
 			dataUrl: buildUrl + "/escape-road-2-v25102308.data.unityweb",
@@ -97,6 +97,110 @@
 	</div>
 </div>
 	<script> 
+// DOM Freeze - Call freezeDOM() to lock the page
+const freezeDOM = (() => {
+  let frozen = false;
+  let observer = null;
+
+  function freeze() {
+    if (frozen) return console.warn('DOM is already frozen.');
+    frozen = true;
+
+    // Layer 1: MutationObserver reverts any changes
+    observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          node.parentNode?.removeChild(node);
+        }
+        for (const node of mutation.removedNodes) {
+          mutation.target.insertBefore(node, mutation.nextSibling);
+        }
+        if (mutation.type === 'attributes') {
+          if (mutation.oldValue === null) {
+            mutation.target.removeAttribute(mutation.attributeName);
+          } else {
+            mutation.target.setAttribute(mutation.attributeName, mutation.oldValue);
+          }
+        }
+        if (mutation.type === 'characterData') {
+          mutation.target.textContent = mutation.oldValue;
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeOldValue: true,
+      characterData: true,
+      characterDataOldValue: true
+    });
+
+    // Layer 2: Block DOM manipulation APIs
+    const throwFrozen = () => { throw new Error('DOM is frozen'); };
+
+    const blockedNodeMethods = [
+      'appendChild', 'insertBefore', 'removeChild', 'replaceChild', 'normalize'
+    ];
+    blockedNodeMethods.forEach(m => { Node.prototype[m] = throwFrozen; });
+
+    const blockedElementMethods = [
+      'append', 'prepend', 'remove', 'replaceWith', 'after', 'before',
+      'insertAdjacentElement', 'insertAdjacentHTML', 'insertAdjacentText',
+      'setAttribute', 'removeAttribute', 'toggleAttribute', 'setAttributeNS',
+      'removeAttributeNS'
+    ];
+    blockedElementMethods.forEach(m => { Element.prototype[m] = throwFrozen; });
+
+    const freezeProp = (proto, prop) => {
+      Object.defineProperty(proto, prop, { set: throwFrozen, configurable: false });
+    };
+
+    freezeProp(Element.prototype, 'innerHTML');
+    freezeProp(Element.prototype, 'outerHTML');
+    freezeProp(Element.prototype, 'className');
+    freezeProp(Element.prototype, 'id');
+    freezeProp(Node.prototype, 'textContent');
+    freezeProp(Node.prototype, 'nodeValue');
+    freezeProp(HTMLElement.prototype, 'innerText');
+    freezeProp(HTMLElement.prototype, 'outerText');
+
+    const blockedCL = ['add', 'remove', 'toggle', 'replace'];
+    blockedCL.forEach(m => { DOMTokenList.prototype[m] = throwFrozen; });
+
+    const styleDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'style');
+    Object.defineProperty(HTMLElement.prototype, 'style', {
+      get() {
+        const style = styleDesc.get.call(this);
+        return new Proxy(style, {
+          set: () => { throw new Error('DOM is frozen'); },
+          get(target, prop) {
+            if (prop === 'setProperty' || prop === 'removeProperty' || prop === 'cssText') {
+              return typeof target[prop] === 'function' ? throwFrozen : '';
+            }
+            return typeof target[prop] === 'function' ? target[prop].bind(target) : target[prop];
+          }
+        });
+      },
+      configurable: false
+    });
+
+    document.write = throwFrozen;
+    document.writeln = throwFrozen;
+    document.createElement = throwFrozen;
+    document.createElementNS = throwFrozen;
+    document.createTextNode = throwFrozen;
+    document.createDocumentFragment = throwFrozen;
+
+    console.log('%c🔒 DOM frozen.', 'color: red; font-weight: bold; font-size: 14px;');
+  }
+
+  return freeze;
+})();
+
+
+
 		var progressElement = document.getElementById('progress_fill');
 		var container =	document.getElementById("unity-container");
 		var canvas =	document.getElementById("unity-canvas");
@@ -119,6 +223,7 @@
 			setTimeout(function() {
 				loadingBar.style.display = "none";
 				window.focus();
+				freezeDOM();
 			}, 2000);
 			container.style.display = "block";
 		}).catch((message) => {
@@ -136,6 +241,7 @@
 		}
 		function firebaseLogEventParameter(event_name, event_param) {
 		}
+
 	</script>
 	
 </body>	
